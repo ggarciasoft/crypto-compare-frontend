@@ -46,26 +46,40 @@ export class AppComponent implements OnInit {
     //   }
     // ]
 
-    this.http.get("http://localhost:3000/currencies").subscribe((data: Exchange[]) => {
+    this.http.get("https://crypto-compare-backend-ggarciasoft.c9users.io/currencies").subscribe((data: Exchange[]) => {
       this.exchanges = data;
       this.setExchangesName();
       this.setCurrenciesName();
       this.loading = false;
     }, err => {
       this.error = err.statusText;
+      console.log(this.error);
       this.loading = false;
     });
   }
   public setExchangesName() {
-    this.exchangesName = this.exchanges.map(o => o.Exchange);
+    this.exchangesName = this.exchanges
+      .map(o => o.Exchange)
+      .sort((a, b) =>{
+        if(a > b)
+        {
+          return 1;
+        }
+        else if(a < b)
+        {
+          return -1;
+        }
+        
+        return 0;
+      });
   }
 
   public setCurrenciesName() {
-    this.currenciesName = [];
-    this.exchanges.forEach(exchange => exchange.Markets.forEach(market => {
-      if (this.currenciesName.indexOf(market.CurrencyPair) == -1 && this.currencyIsOnMoreThanOneExchange(market.CurrencyPair))
-        this.currenciesName.push(market.CurrencyPair);
-    }))
+    //Set all distinct currencies
+    this.currenciesName = this.exchanges
+    .map(exchange => exchange.Markets.map(market => market.CurrencyPair))
+    .reduce((a, b) => a.concat(b))
+    .filter((value, index, self) => self.indexOf(value) === index && this.currencyIsOnMoreThanOneExchange(value));
   }
 
   public currencyIsOnMoreThanOneExchange(currency: string){
