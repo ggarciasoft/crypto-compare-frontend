@@ -1,0 +1,8 @@
+th, td {
+    padding: 12px;
+    border: 1px solid;
+}
+
+th:first-child {
+    border: none;
+}
