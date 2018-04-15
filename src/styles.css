@@ -1,1 +1,14 @@
 /* You can add global styles to this file, and also import other style files */
+
+.table-exchange th, .table-exchange td {
+    padding: 12px;
+    border: 1px solid;
+}
+
+.table-exchange th:first-child {
+    border: none;
+}
+
+.table-exchange .has-relate-exchange{
+    background-color: lightgray; 
+}

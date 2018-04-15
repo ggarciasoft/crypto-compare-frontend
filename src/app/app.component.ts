@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http'
 import Currency from './Currency';
 import Exchange from './Exchange';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -12,44 +13,19 @@ export class AppComponent implements OnInit {
 
   title = 'app';
 
-  public loading: boolean;
-  public error: string;
-  public exchanges: Exchange[];
-  public exchangesName: string[];
-  public currenciesName: string[];
-  public currentExchangeSelected: string;
+  private loading: boolean;
+  private error: string;
+  private exchanges: Exchange[];
+  private generatedTableHtml: string;
+  private minPercentToRelateExchange: number = 5;
 
   constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
     this.loading = true;
-    // this.exchanges = [
-    //   {
-    //     Exchange: "Bittrex",
-    //     Markets: [
-    //       {
-    //         CurrencyPair: "BTC-ETH",
-    //         Buy: 1,
-    //         Sell: 2
-    //       }
-    //     ]
-    //   },
-    //   {
-    //     Exchange: "Poloniex",
-    //     Markets: [
-    //       {
-    //         CurrencyPair: "BTC-ETH",
-    //         Buy: 3,
-    //         Sell: 4
-    //       }
-    //     ]
-    //   }
-    // ]
-
-    this.http.get("https://crypto-compare-backend-ggarciasoft.c9users.io/currencies").subscribe((data: Exchange[]) => {
+    this.http.get(`${environment.ApiUrlHost}/currencies`).subscribe((data: Exchange[]) => {
       this.exchanges = data;
-      this.setExchangesName();
-      this.setCurrenciesName();
+      this.generateExchangeTable();
       this.loading = false;
     }, err => {
       this.error = err.statusText;
@@ -57,61 +33,162 @@ export class AppComponent implements OnInit {
       this.loading = false;
     });
   }
-  public setExchangesName() {
-    this.exchangesName = this.exchanges
-      .map(o => o.Exchange)
-      .sort((a, b) =>{
-        if(a > b)
-        {
-          return 1;
+
+  private generateExchangeTable() {
+    let exchangesName = this.getExchangesName();
+    let currenciesName = this.getCurrenciesName();
+    let exchangeNameBuyAndSellHtml = this.getThExchangeNameBuyAndSellHtml(exchangesName);
+    let exchangeBodyHtml = this.getExchangeBodyHtml(exchangesName, currenciesName);
+
+    let trth = (text: string) => `
+      <tr>
+        <th>
+        ${text}
+        </th>
+      </tr>
+    `
+    this.generatedTableHtml = `
+    <table class="table-exchange">
+      <thead>
+        ${trth(exchangeNameBuyAndSellHtml.exchangeName)}
+        ${trth(exchangeNameBuyAndSellHtml.BuyAndSell)}
+      </thead>
+      <tbody>
+        ${exchangeBodyHtml}
+      </tbody>
+      <tfoot>
+        ${trth(exchangeNameBuyAndSellHtml.BuyAndSell)}
+        ${trth(exchangeNameBuyAndSellHtml.exchangeName)}
+      </tfoot>
+    </table>
+    `
+  }
+
+  private getThExchangeNameBuyAndSellHtml(exchangesName: string[]): { exchangeName, BuyAndSell } {
+    let thExchangesName = "";
+    let thBuyAndSell = "";
+
+    exchangesName.forEach(exchangeName => {
+      thExchangesName += `<th colspan="2">${exchangeName}</th>`;
+      thBuyAndSell += `
+      <th>Buy</th>
+      <th>Sell</th>`
+    })
+    return {
+      exchangeName: thExchangesName,
+      BuyAndSell: thBuyAndSell
+    }
+  }
+
+  private getExchangeBodyHtml(exchangesName: string[], currenciesName: string[]) {
+    let html = "";
+    currenciesName.forEach(currencyName => {
+      html += `<tr><td>${currencyName}</td>`;
+      for (let exchangeIndex = 0; exchangeIndex < exchangesName.length; exchangeIndex++) {
+        let exchangeName = exchangesName[exchangeIndex];
+        let currency = this.getCurrency(currencyName, exchangeName);
+        //if a currency exists on current exchange, look for relates exchanges with the price, otherwise, put default value.
+        if (currency) {
+          this.cleanRelateExchanges(currency);
+
+          this.setRelatedExchangesToCurrency(currency, exchangeName, exchangesName, exchangeIndex);
+          let relateExchangesOnBuy = currency.RelateExchangesOnBuy.join();
+          let relateExchangesOnSell = currency.RelateExchangesOnSell.join();
+          html += `
+          <td ${relateExchangesOnBuy ? "class='has-relate-exchange'" : ""}>${currency.Buy} ${relateExchangesOnBuy}</td>
+          <td ${relateExchangesOnSell ? "class='has-relate-exchange'" : ""}>${currency.Sell} ${relateExchangesOnSell}</td>
+        `
         }
-        else if(a < b)
-        {
-          return -1;
+        else {
+          html += `
+          <td>0</td>
+          <td>0</td>
+        `
         }
-        
-        return 0;
-      });
-  }
-
-  public setCurrenciesName() {
-    //Set all distinct currencies
-    this.currenciesName = this.exchanges
-    .map(exchange => exchange.Markets.map(market => market.CurrencyPair))
-    .reduce((a, b) => a.concat(b))
-    .filter((value, index, self) => self.indexOf(value) === index && this.currencyIsOnMoreThanOneExchange(value));
-  }
-
-  public currencyIsOnMoreThanOneExchange(currency: string){
-    return this.exchanges.filter(exchange => exchange.Markets.some(market => market.CurrencyPair == currency)).length > 1;
-  }
-
-  public getArrayNumberExchanges() {
-    let arr = [];
-    for (let i = 0; i < this.exchangesName.length * 2; i++)
-      arr[i] = i;
-    return arr;
-  }
-
-  public getBuyOrSell(currency: string, exchangeIndex: number) {
-    if (this.currentExchangeSelected) {
-      let currencyMarket = this.getCurrency(currency);
-      this.currentExchangeSelected = null;
-      if (currencyMarket) {
-        return currencyMarket.Sell;
       }
-    } else {
-      this.currentExchangeSelected = this.exchangesName[exchangeIndex];
-      let currencyMarket = this.getCurrency(currency);
-      if (currencyMarket) {
-        return currencyMarket.Buy;
+      html += `<td>${currencyName}</td></tr>`;
+    });
+    return html;
+  }
+
+  /**
+   * Set a relationship between current exchange currency, and others exchanges with prices.
+   * @param currency Currency to verify the price on others exchanges and relate it with them.
+   * @param currentExchangeName Exchange where @currency belong to.
+   * @param exchangesName Every exchanges on system.
+   * @param exchangeIndex Index of currentExchange.
+   */
+  private setRelatedExchangesToCurrency(currency: Currency, currentExchangeName: string, exchangesName: string[], exchangeIndex: number) {
+    //Start with the next exchange on the list.
+    for (exchangeIndex++; exchangeIndex < exchangesName.length; exchangeIndex++) {
+      let exchangeName = exchangesName[exchangeIndex];
+      let nextCurrency = this.getCurrency(currency.CurrencyPair, exchangeName);
+      if (nextCurrency) {
+        this.cleanRelateExchanges(nextCurrency);
+
+        //if each values on currency is greater than 0.
+        if ((currency.Sell > 0 && nextCurrency.Buy > 0) || (nextCurrency.Sell > 0 && currency.Buy > 0)) {
+          //if buy value on next exchange is greater than sell value on current exchange, 
+          //and the differences between those values is greater than or equal to min percent, relate the currency on those exchanges.
+          if (nextCurrency.Buy > currency.Sell) {
+            let percent = this.getPercentBetweenValues(nextCurrency.Buy, currency.Sell);
+            if (percent >= this.minPercentToRelateExchange) {
+              currency.RelateExchangesOnSell.push(`${exchangeName} (${percent})`);
+              nextCurrency.RelateExchangesOnBuy.push(`${currentExchangeName} (${percent})`);
+            }
+          }
+          //if buy value on current exchange is greater than sell value on next exchange, 
+          //and the differences between those values is greater than or equal to min percent, relate the currency on those exchanges.
+          if (currency.Buy > nextCurrency.Sell) {
+            let percent = this.getPercentBetweenValues(currency.Buy, nextCurrency.Sell);
+            if (percent >= this.minPercentToRelateExchange) {
+              currency.RelateExchangesOnBuy.push(`${exchangeName} (${percent})`);
+              nextCurrency.RelateExchangesOnSell.push(`${currentExchangeName} (${percent})`);
+            }
+          }
+        }
       }
     }
-
-    return 0;
   }
 
-  public getCurrency(currency: string) {
-    return this.exchanges.filter(o => o.Exchange == this.currentExchangeSelected)[0].Markets.filter(o => o.CurrencyPair == currency)[0];
+  private getPercentBetweenValues(val1: number, val2: number): number {
+    let maxValue = Math.max(val1, val2);
+    let minValue = Math.min(val1, val2);
+    let result = maxValue - minValue;
+    return Number(Number((result / maxValue) * 100).toFixed(2));
+  }
+
+  private cleanRelateExchanges(currency: Currency) {
+    if (currency) {
+      if (!currency.RelateExchangesOnBuy) {
+        currency.RelateExchangesOnBuy = [];
+      }
+      if (!currency.RelateExchangesOnSell) {
+        currency.RelateExchangesOnSell = [];
+      }
+    }
+  }
+
+  private getExchangesName() {
+    return this.exchanges
+      .map(o => o.Exchange)
+      .sort();
+  }
+
+  private getCurrenciesName() {
+    //Get all distinct currencies
+    return this.exchanges
+      .map(exchange => exchange.Currencies.map(market => market.CurrencyPair))
+      .reduce((a, b) => a.concat(b))
+      .filter((value, index, self) => self.indexOf(value) === index && this.currencyIsOnMoreThanOneExchange(value))
+      .sort();
+  }
+
+  private currencyIsOnMoreThanOneExchange(currency: string) {
+    return this.exchanges.filter(exchange => exchange.Currencies.some(market => market.CurrencyPair == currency)).length > 1;
+  }
+
+  private getCurrency(currency: string, exchange: string): Currency {
+    return this.exchanges.filter(o => o.Exchange == exchange)[0].Currencies.filter(o => o.CurrencyPair == currency)[0];
   }
 }

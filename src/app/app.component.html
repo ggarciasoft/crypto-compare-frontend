@@ -2,28 +2,6 @@
   Loading
 </span>
 <span>{{error}}</span>
+<div *ngIf="exchanges" [innerHTML]="generatedTableHtml">
 
-<table *ngIf="exchanges">
-  <thead>
-    <tr>
-      <th></th>
-      <th colspan="2" *ngFor="let exchange of exchangesName">{{exchange}}</th>
-    </tr>
-    <tr>
-      <th></th>
-      <th *ngFor="let i of getArrayNumberExchanges()">{{(i%2) ? "Sell" : "Buy" }}</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr *ngFor="let currency of currenciesName">
-      <td>{{ currency }}</td>
-      <td *ngFor="let i of getArrayNumberExchanges()">{{getBuyOrSell(currency, i/2)}}</td>
-    </tr>
-  </tbody>
-  <tfoot>
-    <tr>
-      <th></th>
-      <th colspan="2" *ngFor="let exchange of exchangesName">{{exchange}}</th>
-    </tr>
-  </tfoot>
-</table>
+</div>
