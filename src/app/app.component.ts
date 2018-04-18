@@ -28,7 +28,7 @@ export class AppComponent implements OnInit {
       this.generateExchangeTable();
       this.loading = false;
     }, err => {
-      this.error = err.statusText;
+      this.error = err.error;
       console.log(this.error);
       this.loading = false;
     });
