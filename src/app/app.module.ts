@@ -1,20 +1,36 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
+import { RouterModule } from '@angular/router'
 
 
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http'
+import { MainCoinCompareComponent } from './main-coin-compare/main-coin-compare.component';
+import { ExchangeCompareComponent } from './exchange-compare/exchange-compare.component';
+import { CurrencyService } from './services/currency.service.';
 
+const routes = [
+  {
+    path: '',
+    component: ExchangeCompareComponent,
+    children: [
+      { path: 'main-coin', component: MainCoinCompareComponent },
+      { path: 'exchange', component: ExchangeCompareComponent }]
+  }
+]
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    MainCoinCompareComponent,
+    ExchangeCompareComponent
   ],
   imports: [
     BrowserModule,
+    RouterModule.forRoot(routes),
     HttpClientModule
   ],
-  providers: [],
+  providers: [CurrencyService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
