@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http'
 import Currency from '../Currency';
 import Exchange from '../Exchange';
 import { environment } from '../../environments/environment';
+import { CurrencyService } from '../services/currency.service.';
 
 @Component({
   selector: 'app-main-coin-compare',
@@ -16,11 +17,11 @@ export class MainCoinCompareComponent implements OnInit {
   private generatedTableHtml: string;
   private minPercentToRelateExchange: number = 5;
 
-  constructor(private http: HttpClient) { }
+  constructor(private _service: CurrencyService) { }
 
   ngOnInit(): void {
     this.loading = true;
-    this.http.get(`${environment.ApiUrlHost}/currencies`).subscribe((data: Exchange[]) => {
+    this._service.getCurrencies().subscribe((data: Exchange[]) => {
       this.exchanges = data;
       this.generateExchangeTable();
       this.loading = false;
@@ -33,6 +34,18 @@ export class MainCoinCompareComponent implements OnInit {
 
   private generateExchangeTable() {
     let exchangesName = this.getExchangesName();
+
+    for (let index = 0; index < exchangesName.length; index++) {
+      let exchangeName = exchangesName[index];
+      let currencies = this.exchanges
+      .filter(exchange => exchange.Exchange == exchangeName)[0].Currencies;
+      for (let index = 0; index < currencies.length; index++) {
+        let currency = currencies[index];
+        
+      }
+      
+    }
+
     let currenciesName = this.getCurrenciesName();
     let exchangeNameBuyAndSellHtml = this.getThExchangeNameBuyAndSellHtml(exchangesName);
     let exchangeBodyHtml = this.getExchangeBodyHtml(exchangesName, currenciesName);
