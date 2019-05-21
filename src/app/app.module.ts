@@ -8,22 +8,23 @@ import { HttpClientModule } from '@angular/common/http'
 import { MainCoinCompareComponent } from './main-coin-compare/main-coin-compare.component';
 import { ExchangeCompareComponent } from './exchange-compare/exchange-compare.component';
 import { CurrencyService } from './services/currency.service.';
+import { EmptyComponent } from './empty/empty.component';
 
 const routes = [
   {
     path: '',
-    component: ExchangeCompareComponent,
-    children: [
-      { path: 'main-coin', component: MainCoinCompareComponent },
-      { path: 'exchange', component: ExchangeCompareComponent }]
-  }
+    component: EmptyComponent
+  },
+  { path: 'main-coin', component: MainCoinCompareComponent },
+  { path: 'exchange', component: ExchangeCompareComponent }
 ]
 
 @NgModule({
   declarations: [
     AppComponent,
     MainCoinCompareComponent,
-    ExchangeCompareComponent
+    ExchangeCompareComponent,
+    EmptyComponent
   ],
   imports: [
     BrowserModule,

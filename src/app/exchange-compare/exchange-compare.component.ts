@@ -14,7 +14,7 @@ export class ExchangeCompareComponent implements OnInit {
   private loading: boolean;
   private error: string;
   private exchanges: Exchange[];
-  private generatedTableHtml: string;
+  private generatedTableHtml: string = "";
   private minPercentToRelateExchange: number = 5;
 
   constructor(private _service: CurrencyService) { }
@@ -33,33 +33,101 @@ export class ExchangeCompareComponent implements OnInit {
   }
 
   private generateExchangeTable() {
-    let exchangesName = this.getExchangesName();
-    let currenciesName = this.getCurrenciesName();
-    let exchangeNameBuyAndSellHtml = this.getThExchangeNameBuyAndSellHtml(exchangesName);
-    let exchangeBodyHtml = this.getExchangeBodyHtml(exchangesName, currenciesName);
+    /*let exchangesName = this.getExchangesName();
+    let pairCurrenciesName = this.getPairCurrenciesName();
+*/
+    this.exchanges.forEach(exchange => {
+      let mainCurrencies: any[] = [];
+      let altCurrenciesName: string[] = [];
+      exchange.Currencies = exchange.Currencies.filter(c => c.CurrencyPair);
 
-    let trth = (text: string) => `
-      <tr>
-        <th>
-        ${text}
-        </th>
-      </tr>
-    `
-    this.generatedTableHtml = `
-    <table class="table-exchange">
-      <thead>
-        ${trth(exchangeNameBuyAndSellHtml.exchangeName)}
-        ${trth(exchangeNameBuyAndSellHtml.BuyAndSell)}
-      </thead>
-      <tbody>
-        ${exchangeBodyHtml}
-      </tbody>
-      <tfoot>
-        ${trth(exchangeNameBuyAndSellHtml.BuyAndSell)}
-        ${trth(exchangeNameBuyAndSellHtml.exchangeName)}
-      </tfoot>
-    </table>
-    `
+      exchange.Currencies.filter(c => c.CurrencyPair.indexOf("USDT-") === -1)
+        .forEach(currency => {
+          let currencyName = currency.CurrencyPair.split("-")[0];
+          if (!mainCurrencies.some(c => c.currencyName === currencyName)) {
+            let curr = exchange.Currencies.filter(c => c.CurrencyPair.indexOf("USDT-" + currencyName) !== -1)[0];
+            if (curr) {
+              mainCurrencies.push({
+                currencyName,
+                currencyObj: curr
+              });
+            }
+          }
+
+          currencyName = currency.CurrencyPair.split("-")[1];
+          if (altCurrenciesName.indexOf(currencyName) === -1) {
+            altCurrenciesName.push(currencyName);
+          }
+        });
+
+      altCurrenciesName.forEach(altCurrencyName => {
+        mainCurrencies.forEach(mainCurrency => {
+          let altCurrency = exchange.Currencies.filter(c => c.CurrencyPair === (mainCurrency.currencyName + "-" + altCurrencyName))[0];
+          if (altCurrency) {
+            let buyUSD = altCurrency.Buy * mainCurrency.currencyObj.Buy;
+            let sellUSD = altCurrency.Sell * mainCurrency.currencyObj.Sell;
+            if (buyUSD || sellUSD) {
+              let validAltCurrency =
+                exchange
+                  .Currencies
+                  .filter(c => {
+                    if (c.CurrencyPair != (mainCurrency.currencyName + "-" + altCurrencyName)
+                      && c.CurrencyPair.split("-")[1] == altCurrencyName) {
+                      let altBuyUSD = 0;
+                      let altSellUSD = 0;
+
+                      if (c.CurrencyPair.indexOf("USDT-") !== -1) {
+                        altBuyUSD = c.Buy;
+                        altSellUSD = c.Sell;
+                      } else {
+                        let valueOnUSD = mainCurrencies
+                          .filter(c2 => c2.currencyName == c.CurrencyPair.split("-")[0])[0];
+                        if (valueOnUSD) {
+                          altBuyUSD = c.Buy * valueOnUSD.currencyObj.Buy;
+                          altSellUSD = c.Sell * valueOnUSD.currencyObj.Sell;
+                        }
+                      }
+                      return ((altBuyUSD && sellUSD && sellUSD < altBuyUSD && ((Math.abs(altBuyUSD - sellUSD) / sellUSD) * 100) > 20) || 
+                        (altSellUSD && buyUSD && buyUSD > altSellUSD && ((Math.abs(altSellUSD - buyUSD) / buyUSD) * 100) > 20))
+                    }
+                    return false;
+                  })[0];
+              if (validAltCurrency) {
+                this.generatedTableHtml += "Exchange: " + exchange.Exchange + " " + JSON.stringify(validAltCurrency);
+              }
+            }
+          }
+        });
+      });
+    });
+
+    /*
+        let exchangeNameBuyAndSellHtml = this.getThExchangeNameBuyAndSellHtml(exchangesName);
+        let exchangeBodyHtml = this.getExchangeBodyHtml(exchangesName, currenciesName);
+    
+        let trth = (text: string) => `
+          <tr>
+            <th>
+            ${text}
+            </th>
+          </tr>
+        `
+        this.generatedTableHtml = `
+        <table class="table-exchange">
+          <thead>
+            ${trth(exchangeNameBuyAndSellHtml.exchangeName)}
+            ${trth(exchangeNameBuyAndSellHtml.BuyAndSell)}
+          </thead>
+          <tbody>
+            ${exchangeBodyHtml}
+          </tbody>
+          <tfoot>
+            ${trth(exchangeNameBuyAndSellHtml.BuyAndSell)}
+            ${trth(exchangeNameBuyAndSellHtml.exchangeName)}
+          </tfoot>
+        </table>
+        `
+        */
   }
 
   private getThExchangeNameBuyAndSellHtml(exchangesName: string[]): { exchangeName, BuyAndSell } {
@@ -169,12 +237,12 @@ export class ExchangeCompareComponent implements OnInit {
       .sort();
   }
 
-  private getCurrenciesName() {
+  private getPairCurrenciesName() {
     //Get all distinct currencies
     return this.exchanges
       .map(exchange => exchange.Currencies.map(market => market.CurrencyPair))
       .reduce((a, b) => a.concat(b))
-      .filter((value, index, self) => self.indexOf(value) === index && this.currencyIsOnMoreThanOneExchange(value))
+      .filter((value, index, self) => self.indexOf(value) === index)
       .sort();
   }
 
